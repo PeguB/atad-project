@@ -9,32 +9,31 @@ CLI tools force you to think about user experience in a constrained environment.
 ## Current Status: Proof of Concept (PoC)
 
 This is currently a **proof of concept** that demonstrates:
-- ✅ CLI application structure using Cobra
-- ✅ Database connectivity (PostgreSQL)
+- ✅ Terminal UI application structure
+- ✅ Database connectivity
 - ✅ Connection testing functionality
 
 ## Planned Features
 
-- 📥 Import transactions from bank statements (CSV, JSON)
+- 📥 Import transactions from bank statements 
 - 🏷️ Automatic transaction categorization
 - 💰 Budget setting and tracking
 - 📊 Financial reports and insights
 - 🔍 Transaction search and filtering
 - 📈 Spending analytics
-- 💾 Data persistence with PostgreSQL
+- 💾 Data persistence with SQLite
 
 ## Tech Stack
 
 - **Language:** Go 1.25+
-- **CLI Framework:** [Cobra](https://github.com/spf13/cobra)
-- **Database:** PostgreSQL
-- **Database Driver:** [lib/pq](https://github.com/lib/pq)
+- **CLI Framework:** [Bubbletea](https://github.com/charmbracelet/bubbletea)
+- **Database:** SQLite
+- **Database Driver:** [SQLite](https://github.com/mattn/go-sqlite3)
 
 ## Prerequisites
 
 - Go 1.25 or higher
-- Docker & Docker Compose (for local database)
-- PostgreSQL (if not using Docker)
+- SQLite 
 
 ## Setup
 
@@ -46,52 +45,11 @@ cd atad-project
 ```
 
 
-
-## Usage
-
-### Build the application
+### Build and run the application
 
 ```bash
 go build -o atad ./cmd
 ```
-
-### Run commands
-
-**Test database connection:**
 ```bash
-./atad test-db
+./atad 
 ```
-
-Or run directly with Go:
-```bash
-go run ./cmd test-db
-```
-
-**Show available commands:**
-```bash
-./atad --help
-```
-
-## Project Structure
-
-```
-.
-├── cmd/                    # CLI commands
-│   ├── main.go            # Application entry point
-│   ├── root.go            # Root command and DB connection
-│   └── test_db.go         # Database connection test command
-├── internal/
-│   ├── database/          # Database connection logic
-│   ├── models/            # Data models (to be implemented)
-│   └── repository/        # Database repositories (to be implemented)
-├── docs/                  # Documentation
-├── tests/                 # Tests
-├── docker-compose.yml     # PostgreSQL setup
-├── .env.example           # Environment variables template
-├── go.mod                 # Go module definition
-└── README.md             # This file
-```
-
-## Author
-
-Bogdan Pegulescu (@PeguB)

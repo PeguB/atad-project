@@ -3,29 +3,28 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
+	"path/filepath"
 
-	_ "github.com/lib/pq"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
 	DB *sql.DB
 }
 
-// NewDatabase creates a new database connection
+// NewDatabase creates a new SQLite database connection
 func NewDatabase() (*Database, error) {
-	// Get connection details from environment variables
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "postgres")
-	password := getEnv("DB_PASSWORD", "postgres")
-	dbname := getEnv("DB_NAME", "atad_db")
+	// Get database path from environment variable or use default
+	dbPath := getEnv("DB_PATH", getDefaultDBPath())
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+	// Ensure the directory exists
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("error creating database directory: %w", err)
+	}
 
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening database: %w", err)
 	}
@@ -35,14 +34,21 @@ func NewDatabase() (*Database, error) {
 		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
-	log.Println("Successfully connected to database")
-
 	return &Database{DB: db}, nil
 }
 
 // Close closes the database connection
 func (d *Database) Close() error {
 	return d.DB.Close()
+}
+
+// getDefaultDBPath returns the default database path
+func getDefaultDBPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "./atad.db"
+	}
+	return filepath.Join(homeDir, ".atad", "atad.db")
 }
 
 // Helper function to get environment variables with default values
