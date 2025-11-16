@@ -38,33 +38,11 @@ This is currently a **proof of concept** that demonstrates:
 
 ## Setup
 
-### 1. Clone the repository
+### Clone the repository
 
 ```bash
 git clone https://github.com/PeguB/atad-project.git
 cd atad-project
-```
-
-### 2. Install dependencies
-
-```bash
-go mod download
-```
-
-### 3. Start the database
-
-```bash
-docker-compose up -d
-```
-
-This will start a PostgreSQL database on `localhost:5432`.
-
-### 4. Configure environment variables (optional)
-
-Copy `.env.example` to `.env` and adjust if needed:
-
-```bash
-cp .env.example .env
 ```
 
 
