@@ -19,6 +19,7 @@ const (
 	viewTransactionsScreen
 	addTransactionScreen
 	budgetScreen
+	incomeReportScreen
 )
 
 type model struct {
@@ -30,6 +31,7 @@ type model struct {
 	viewTransactionsScreen *tui.ViewTransactionsScreen
 	addTransactionScreen   *tui.AddTransactionScreen
 	budgetScreen           *tui.BudgetScreen
+	incomeReportScreen     *tui.IncomeReportScreen
 	choices                []string
 	cursor                 int
 	selected               map[int]struct{}
@@ -40,7 +42,7 @@ func initialModel() model {
 	return model{
 		currentScreen:   menuScreen,
 		categoryService: service.NewCategoryService(),
-		choices:         []string{"Test Database Connection", "View Transactions", "Add Transaction", "Manage Budgets", "Exit"},
+		choices:         []string{"Test Database Connection", "View Transactions", "Add Transaction", "Manage Budgets", "Income Report", "Exit"},
 		selected:        make(map[int]struct{}),
 		status:          "Ready",
 	}
@@ -97,6 +99,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		var cmd tea.Cmd
 		m.budgetScreen, cmd = m.budgetScreen.Update(msg)
+		return m, cmd
+	}
+
+	if m.currentScreen == incomeReportScreen {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" {
+				m.incomeReportScreen.Reset()
+				m.currentScreen = menuScreen
+				m.status = "Returned to menu"
+				return m, nil
+			}
+		}
+
+		var cmd tea.Cmd
+		m.incomeReportScreen, cmd = m.incomeReportScreen.Update(msg)
 		return m, cmd
 	}
 
@@ -161,7 +179,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.repo = repository.NewTransactionRepository(db.DB)
 					m.budgetRepo = repository.NewBudgetRepository(db.DB)
 				}
-				m.addTransactionScreen = tui.NewAddTransactionScreen(m.repo, m.categoryService)
+				m.addTransactionScreen = tui.NewAddTransactionScreen(m.repo, m.budgetRepo, m.categoryService)
 				m.currentScreen = addTransactionScreen
 			case 3: // Manage Budgets
 				if m.db == nil {
@@ -177,7 +195,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.budgetScreen = tui.NewBudgetScreen(m.budgetRepo)
 				m.budgetScreen.Init()
 				m.currentScreen = budgetScreen
-			case 4: // Exit
+			case 4: // Income Report
+				if m.db == nil {
+					db, err := database.NewDatabase()
+					if err != nil {
+						m.status = fmt.Sprintf("❌ Failed to connect to database: %v", err)
+						return m, nil
+					}
+					m.db = db
+					m.repo = repository.NewTransactionRepository(db.DB)
+					m.budgetRepo = repository.NewBudgetRepository(db.DB)
+				}
+				m.incomeReportScreen = tui.NewIncomeReportScreen(m.repo)
+				m.incomeReportScreen.Init()
+				m.currentScreen = incomeReportScreen
+			case 5: // Exit
 				if m.db != nil {
 					m.db.Close()
 				}
@@ -212,6 +244,14 @@ func (m model) View() string {
 			statusMsg = fmt.Sprintf("\nStatus: %s\n", m.status)
 		}
 		return m.budgetScreen.View() + statusMsg
+	}
+
+	if m.currentScreen == incomeReportScreen {
+		statusMsg := ""
+		if m.status != "" && m.status != "Ready" {
+			statusMsg = fmt.Sprintf("\nStatus: %s\n", m.status)
+		}
+		return m.incomeReportScreen.View() + statusMsg
 	}
 
 	s := "🏦 ATAD - Personal Finance Tracker\n\n"

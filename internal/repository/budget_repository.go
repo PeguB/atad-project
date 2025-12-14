@@ -47,17 +47,22 @@ func (r *BudgetRepository) Create(budget *models.Budget) error {
 // GetByCategory retrieves a budget for a specific category
 func (r *BudgetRepository) GetByCategory(category string) (*models.Budget, error) {
 	query := `
-		SELECT id, category, amount, period
+		SELECT id, category, amount, period, start_date, end_date
 		FROM budgets
 		WHERE category = ?
+		ORDER BY start_date DESC
+		LIMIT 1
 	`
 
 	budget := &models.Budget{}
+	var startDate, endDate sql.NullTime
 	err := r.db.QueryRow(query, category).Scan(
 		&budget.ID,
 		&budget.Category,
 		&budget.Amount,
 		&budget.Period,
+		&startDate,
+		&endDate,
 	)
 
 	if err == sql.ErrNoRows {
@@ -66,6 +71,13 @@ func (r *BudgetRepository) GetByCategory(category string) (*models.Budget, error
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get budget: %w", err)
+	}
+
+	if startDate.Valid {
+		budget.StartDate = startDate.Time
+	}
+	if endDate.Valid {
+		budget.EndDate = endDate.Time
 	}
 
 	return budget, nil
@@ -238,6 +250,25 @@ func (r *BudgetRepository) GetSpending(category string, startDate, endDate inter
 	err := r.db.QueryRow(query, category, startDate, endDate).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get spending: %w", err)
+	}
+
+	return total, nil
+}
+
+// GetIncome calculates total income for a category in a given date range
+func (r *BudgetRepository) GetIncome(category string, startDate, endDate interface{}) (float64, error) {
+	query := `
+		SELECT COALESCE(SUM(amount), 0)
+		FROM transactions
+		WHERE category = ? 
+		AND type = 'income'
+		AND date >= ? AND date <= ?
+	`
+
+	var total float64
+	err := r.db.QueryRow(query, category, startDate, endDate).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get income: %w", err)
 	}
 
 	return total, nil

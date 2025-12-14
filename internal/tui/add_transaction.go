@@ -14,6 +14,7 @@ import (
 
 type AddTransactionScreen struct {
 	repo            *repository.TransactionRepository
+	budgetRepo      *repository.BudgetRepository
 	categoryService *service.CategoryService
 	step            int
 	txType          string
@@ -26,9 +27,10 @@ type AddTransactionScreen struct {
 	success         string
 }
 
-func NewAddTransactionScreen(repo *repository.TransactionRepository, categoryService *service.CategoryService) *AddTransactionScreen {
+func NewAddTransactionScreen(repo *repository.TransactionRepository, budgetRepo *repository.BudgetRepository, categoryService *service.CategoryService) *AddTransactionScreen {
 	return &AddTransactionScreen{
 		repo:            repo,
+		budgetRepo:      budgetRepo,
 		categoryService: categoryService,
 		step:            0,
 	}
@@ -158,10 +160,92 @@ func (s *AddTransactionScreen) saveTransaction() {
 	if err != nil {
 		s.err = fmt.Sprintf("Failed to save: %v", err)
 		s.step = 5
+		return
+	}
+
+	// Update budget for both income and expense
+	s.updateBudget(amount)
+
+	s.step = 5
+}
+
+func (s *AddTransactionScreen) updateBudget(amount float64) {
+	// Check if budgetRepo is nil
+	if s.budgetRepo == nil {
+		s.success += "\n⚠️ Budget repository not initialized"
+		return
+	}
+
+	// Get budget for this category
+	budget, err := s.budgetRepo.GetByCategory(s.category)
+	if err != nil {
+		// Error fetching budget - show to user for debugging
+		s.success += fmt.Sprintf("\n⚠️ Error fetching budget: %v", err)
+		return
+	}
+
+	// Parse the transaction date
+	txDate, err := time.Parse("02/01/2006", s.date)
+	if err != nil {
+		s.success += fmt.Sprintf("\n⚠️ Error parsing date: %v", err)
+		return
+	}
+
+	// Get current spending/income for this category in the budget period
+	var startDate, endDate interface{}
+
+	// Check if transaction falls within budget period
+	if !budget.StartDate.IsZero() && !budget.EndDate.IsZero() {
+		if txDate.Before(budget.StartDate) || txDate.After(budget.EndDate) {
+			// Transaction is outside budget period
+			s.success += fmt.Sprintf("\n💡 Transaction date (%s) outside budget period (%s to %s)",
+				txDate.Format("02/01/2006"),
+				budget.StartDate.Format("02/01/2006"),
+				budget.EndDate.Format("02/01/2006"))
+			return
+		}
+		startDate = budget.StartDate
+		endDate = budget.EndDate
 	} else {
-		s.success = fmt.Sprintf("✅ %s added: $%.2f (%s) on %s",
-			strings.Title(s.txType), amount, s.category, s.date)
-		s.step = 5
+		// If no date range specified, use transaction date's month
+		startOfMonth := time.Date(txDate.Year(), txDate.Month(), 1, 0, 0, 0, 0, txDate.Location())
+		endOfMonth := startOfMonth.AddDate(0, 1, -1)
+		startDate = startOfMonth
+		endDate = endOfMonth
+	}
+
+	if s.txType == "expense" {
+		spending, err := s.budgetRepo.GetSpending(s.category, startDate, endDate)
+		if err != nil {
+			// Error getting spending - show to user
+			s.success += fmt.Sprintf("\n⚠️ Error calculating spending: %v", err)
+			return
+		}
+
+		// Show budget status
+		percentUsed := (spending / budget.Amount) * 100
+		if spending > budget.Amount {
+			s.success += fmt.Sprintf("\n⚠️  Over budget! Spent: $%.2f / $%.2f (%.0f%%)", spending, budget.Amount, percentUsed)
+		} else if percentUsed >= 80 {
+			s.success += fmt.Sprintf("\n⚠️  Budget warning: $%.2f / $%.2f (%.0f%%)", spending, budget.Amount, percentUsed)
+		} else {
+			s.success += fmt.Sprintf("\n💰 Budget: $%.2f / $%.2f (%.0f%%)", spending, budget.Amount, percentUsed)
+		}
+	} else if s.txType == "income" {
+		income, err := s.budgetRepo.GetIncome(s.category, startDate, endDate)
+		if err != nil {
+			// Error getting income - show to user
+			s.success += fmt.Sprintf("\n⚠️ Error calculating income: %v", err)
+			return
+		}
+
+		percentAchieved := (income / budget.Amount) * 100
+		// Show income tracking
+		if income < budget.Amount {
+			s.success += fmt.Sprintf("\n📊 Income: $%.2f / $%.2f target (%.0f%%)", income, budget.Amount, percentAchieved)
+		} else {
+			s.success += fmt.Sprintf("\n✅ Income goal met! $%.2f / $%.2f (%.0f%%)", income, budget.Amount, percentAchieved)
+		}
 	}
 }
 
