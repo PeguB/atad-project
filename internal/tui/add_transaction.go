@@ -10,6 +10,8 @@ import (
 	"github.com/PeguB/atad-project/internal/repository"
 	"github.com/PeguB/atad-project/internal/service"
 	tea "github.com/charmbracelet/bubbletea"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type AddTransactionScreen struct {
@@ -184,6 +186,12 @@ func (s *AddTransactionScreen) updateBudget(amount float64) {
 		return
 	}
 
+	if budget == nil {
+		// No budget set for this category
+		s.success += fmt.Sprintf("\n💡 No budget set for category '%s'", s.category)
+		return
+	}
+
 	// Parse the transaction date
 	txDate, err := time.Parse("02/01/2006", s.date)
 	if err != nil {
@@ -260,11 +268,13 @@ func (s *AddTransactionScreen) View() string {
 		b.WriteString("  1. Income\n")
 		b.WriteString("  2. Expense\n")
 	case 1:
-		b.WriteString(fmt.Sprintf("Type: %s\n\n", strings.Title(s.txType)))
+		caser := cases.Title(language.English)
+		b.WriteString(fmt.Sprintf("Type: %s\n\n", caser.String(s.txType)))
 		b.WriteString("Description: " + s.description + "▊\n")
 		b.WriteString("\n(Press Enter to continue)\n")
 	case 2:
-		b.WriteString(fmt.Sprintf("Type: %s\n", strings.Title(s.txType)))
+		caser := cases.Title(language.English)
+		b.WriteString(fmt.Sprintf("Type: %s\n", caser.String(s.txType)))
 		b.WriteString(fmt.Sprintf("Description: %s\n\n", s.description))
 		b.WriteString("Amount: $" + s.amount + "▊\n")
 		if s.err != "" {
@@ -272,7 +282,8 @@ func (s *AddTransactionScreen) View() string {
 		}
 		b.WriteString("\n(Press Enter to continue)\n")
 	case 3:
-		b.WriteString(fmt.Sprintf("Type: %s\n", strings.Title(s.txType)))
+		caser := cases.Title(language.English)
+		b.WriteString(fmt.Sprintf("Type: %s\n", caser.String(s.txType)))
 		b.WriteString(fmt.Sprintf("Description: %s\n", s.description))
 		b.WriteString(fmt.Sprintf("Amount: $%s\n\n", s.amount))
 		if s.date == "" {
@@ -286,7 +297,8 @@ func (s *AddTransactionScreen) View() string {
 			b.WriteString("\n(Press Enter to continue)\n")
 		}
 	case 4:
-		b.WriteString(fmt.Sprintf("Type: %s\n", strings.Title(s.txType)))
+		caser := cases.Title(language.English)
+		b.WriteString(fmt.Sprintf("Type: %s\n", caser.String(s.txType)))
 		b.WriteString(fmt.Sprintf("Description: %s\n", s.description))
 		b.WriteString(fmt.Sprintf("Amount: $%s\n", s.amount))
 		b.WriteString(fmt.Sprintf("Date: %s\n\n", s.date))

@@ -118,3 +118,20 @@ func (r *TransactionRepository) Delete(id int64) error {
 
 	return nil
 }
+
+// IsDuplicate checks if a transaction already exists with same date, amount, and description
+func (r *TransactionRepository) IsDuplicate(tx *models.Transaction) (bool, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM transactions
+		WHERE date = ? AND amount = ? AND description = ? AND type = ?
+	`
+
+	var count int
+	err := r.db.QueryRow(query, tx.Date, tx.Amount, tx.Description, tx.Type).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check duplicate: %w", err)
+	}
+
+	return count > 0, nil
+}

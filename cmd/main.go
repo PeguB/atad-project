@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/PeguB/atad-project/internal/database"
+	"github.com/PeguB/atad-project/internal/handlers"
 	"github.com/PeguB/atad-project/internal/repository"
 	"github.com/PeguB/atad-project/internal/service"
 	"github.com/PeguB/atad-project/internal/tui"
@@ -272,9 +273,91 @@ func (m model) View() string {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		// No subcommand provided, launch interactive TUI
+		runInteractiveTUI()
+		return
+	}
+
+	// Parse subcommand
+	subcommand := os.Args[1]
+
+	// Create CLI handler
+	handler := handlers.NewCLIHandler()
+
+	// Initialize database for all commands
+	if err := handler.InitDatabase(); err != nil {
+		fmt.Printf("Error: Failed to initialize database: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Route to appropriate command
+	var cmd handlers.CommandHandler
+
+	switch subcommand {
+	case "add":
+		cmd = &handlers.AddCommand{Handler: handler}
+	case "list":
+		cmd = &handlers.ListCommand{Handler: handler}
+	case "report":
+		cmd = &handlers.ReportCommand{Handler: handler}
+	case "budget":
+		cmd = &handlers.BudgetCommand{Handler: handler}
+	case "search":
+		cmd = &handlers.SearchCommand{Handler: handler}
+	case "import":
+		cmd = &handlers.ImportCommand{Handler: handler}
+	case "help", "-h", "--help":
+		printHelp()
+		return
+	case "version", "-v", "--version":
+		fmt.Println("ATAD Personal Finance Tracker v1.0.0")
+		return
+	default:
+		fmt.Printf("Unknown command: %s\n\n", subcommand)
+		printHelp()
+		os.Exit(1)
+	}
+
+	// Execute command
+	cmd.Handle()
+}
+
+func runInteractiveTUI() {
 	p := tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
+}
+
+func printHelp() {
+	help := `ATAD - Personal Finance Tracker
+
+Usage:
+  atad [command] [flags]
+
+Available Commands:
+  add         Add a new transaction
+  list        List transactions
+  report      Generate reports (income/expense)
+  budget      Manage budgets
+  search      Search transactions
+  import      Import transactions from CSV/OFX files
+  help        Show this help message
+  version     Show version information
+
+Run 'atad [command] -h' for more information about a command.
+
+When run without a command, ATAD starts in interactive TUI mode.
+
+Examples:
+  atad                                    # Start interactive mode
+  atad add -type expense -amount 50       # Add an expense
+  atad list -type income                  # List all income
+  atad report income -period month        # Monthly income report
+  atad budget set Groceries 500           # Set budget for category
+  atad search "coffee"                    # Search transactions
+`
+	fmt.Println(help)
 }
