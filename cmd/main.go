@@ -267,7 +267,7 @@ func (m model) View() string {
 	}
 
 	s += fmt.Sprintf("\nStatus: %s\n", m.status)
-	s += "\nPress q to quit.\n"
+	s += "\nPress Q to quit.\n"
 
 	return s
 }
